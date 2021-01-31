@@ -1,0 +1,141 @@
+<prism:prismApplication
+    xmlns:prism="http://prismlibrary.com/">
+</prism:prismApplication>
+<Window 
+    xmlns:prism="http://prismlibrary.com/"
+    prism:ViewModelLocator.AutoWireViewModel="True">
+    <ContentControl prism:RegionManager.RegionName="ContentRegion" />
+    <CheckBox IsChecked="{Binding IsEnabled}" Content="Can Execute Command"/>
+    <Button Command="{Binding ExecuteDelegateCommand}" Content="DelegateCommand"/>
+    <Button Command="{Binding DelegateCommandObservesProperty}" Content="DelegateCommand ObservesProperty"/>
+    <Button Command="{Binding DelegateCommandObservesCanExecute}" Content="DelegateCommand ObservesCanExecute"/>
+    <Button Command="{Binding ExecuteGenericDelegateCommand}" CommandParameter="Passed Parameter" Content="DelegateCommand Generic"/>
+    <Button Content="Save" Command="{Binding ApplicationCommands.SaveCommand}"/>
+</Window>
+
+public partial class App : PrismApplication
+{
+    protected override Window CreatShell()
+    {
+        return Container.Resolve<MainWindow>();
+    }
+    protected override void RegisterTypes(IContainerRegistry containerRegistry)
+    {
+        containerRegistry.RegisterSingleton<IApplicationCommands, ApplicationCommands>();
+    }
+    protected override void ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
+    {
+        var myModuleType = typeof(MyModuleA);
+        moduleCatalog.AddModule(new ModuleInfo()
+        {
+            ModuleName = myModuleType.Name,
+            ModuleType = myModuleType.AssemblyQualifiedName,
+            InitializationMode = InitializationMode.OnDemand
+        });
+        moduleCatalog.AddModule<ModuleA.ModuleAModule>();
+    }
+    protected override void ConfigureViewModelLocator()
+    {
+        base.ConfigureViewModelLocator();
+        // type / type
+        ViewModelLocationProvider.Register(typeof(MainWindow).ToString(), typeof(CustomViewModel));
+        // type / factory
+        ViewModelLocationProvider.Register(typeof(MainWindow).ToString(), () => Container.Resolve<CustomViewModel>());
+        // generic factory
+        ViewModelLocationProvider.Register<MainWindow>(() => Container.Resolve<CustomViewModel>());
+        // generic type
+        ViewModelLocationProvider.Register<MainWindow, CustomViewModel>();
+    }
+}
+
+public partial class MainWindow : Window
+{
+    IContainerExtention _container;
+    IRegionManager _regionManager;
+    IModuleManager _moduleManager;
+    public MainWindow(IContainerExtention container, IRegionManager regionManager, IModuleManager moduleManager)
+    {
+    }
+    private void Button_Click(object sender, RoutedEventArgs e)
+    {
+        IModuleManager.LoadModule("MyModuleA"); // Module의 View 호출 방법
+    }
+}
+
+var view = IContainerExtention.Resolve<View>()
+
+IView IRegion IRegionManager
+    IRegionManager.RegisterViewWithRegion("ContentRegion", typeof(View));
+
+    IRegion iRegion = IRegionManager.Regions["ContentRegion"];
+    iRegion.Add(ViewA);
+    iRegion.Add(ViewB);
+
+    iRegion.Activate(ViewA);
+    iRegion.Deactivate(ViewA);
+
+public class MainWindowViewModel : BindableBase
+{
+    private bool _isEnabled;
+    public bool IsEnabled
+    {
+        get { return _isEnabled; }
+        set
+        {
+            SetProperty(ref _isEnabled, value);
+            ExecuteDelegateCommand.RaiseCanExecuteChanged();
+        }
+    }
+    private string _updateText;
+    public string UpdateText
+    {
+        get { return _updateText; }
+        set { SetProperty(ref _updateText, value); }
+    }
+    public DelegateCommand ExecuteDelegateCommand { get; private set; }
+    public DelegateCommand<string> ExecuteGenericDelegateCommand { get; private set; }        
+    public DelegateCommand DelegateCommandObservesProperty { get; private set; }
+    public DelegateCommand DelegateCommandObservesCanExecute { get; private set; }
+    private IApplicationCommands _applicationCommands;
+    public IApplicationCommands ApplicationCommands
+    {
+        get { return _applicationCommands; }
+        set { SetProperty(ref _applicationCommands, value); }
+    }
+    public MainWindowViewModel(IApplicationCommands applicationCommands)
+    {
+        ExecuteDelegateCommand = new DelegateCommand(Execute, CanExecute);
+        DelegateCommandObservesProperty = new DelegateCommand(Execute, CanExecute).ObservesProperty(() => IsEnabled);
+        DelegateCommandObservesCanExecute = new DelegateCommand(Execute).ObservesCanExecute(() => IsEnabled);
+        ExecuteGenericDelegateCommand = new DelegateCommand<string>(ExecuteGeneric).ObservesCanExecute(() => IsEnabled);
+        ApplicationCommands = applicationCommands;
+    }
+    private void Execute()
+    {
+        UpdateText = $"Updated: {DateTime.Now}";
+    }
+    private void ExecuteGeneric(string parameter)
+    {
+        UpdateText = parameter;
+    }
+    private bool CanExecute()
+    {
+        return IsEnabled;
+    }
+}
+
+MyModuleA는 클래스 라이브러리 형태로 만들고, 참조 라이브러리에 추가한다.
+public class MyModuleA : IModule
+{
+    public void OnInitialized(IContainerProvider containerProvider)
+    {
+        var regionManager = containerProvider.Resolve<IRegionManager>();
+        regionManager.RegisterViewWithRegion("ContentRegion", typeof(MyViewA)); // View 등록
+    }
+    public void RegisterTypes(IContainerRegistry containerRegistry)
+    {
+    }
+}
+
+ModuleInfo IModule IModuleCatalog IModuleManager
+    IModuleManager.LoadModule("MyModuleA")

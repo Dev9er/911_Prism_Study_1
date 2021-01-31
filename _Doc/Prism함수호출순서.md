@@ -1,0 +1,112 @@
+# Prism 함수 호출 순서
+- <Application x:Class="BootstrapperShell.App"
+- 변경 prism:PrismApplication x:Class="BootstrapperShell.App"
+    - xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    - xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    - 추가 xmlns:prism="http://prismlibrary.com/"
+    - xmlns:local="clr-namespace:BootstrapperShell">
+- 변경 prism:PrismApplication
+- </Application>
+
+- <Window x:Class="BootstrapperShell.Views.MainWindow"
+    - 추가 xmlns:prism="http://prismlibrary.com/"
+    - 추가 prism:ViewModelLocator.AutoWireViewModel="True"
+    - 변경 Title="{Binding Title}" Height="350" Width="525">
+    - Title="Shell" Height="350" Width="525">
+    - <Grid>
+
+        - <ContentControl  />
+        - 변경 <ContentControl prism:RegionManager.RegionName="ContentRegion" />
+    - </Grid>
+- </Window>
+
+- class App : Application
+    - OnStartUp
+        - var bootstrapper = new Bootstrapper();
+        - bootstrapper.Run();
+            - class Bootstrapper : UnityBootstrapper
+                - DependencyObject CreateShell()
+                    - return Container.Resolve<MainWindow>();
+                        - class MainWindow : Window
+                            - MainWindow()
+                                - InitializeComponent();
+                - InitializeShell()
+                    - Application.Current.MainWindow.Show();
+    - 화면 보임
+
+- class App : PrismApplication
+    - IModuleCatalog CreateModuleCatalog()
+        - return new ConfigurationModuleCatalog();
+        - return new DirectoryModuleCatalog() { ModulePath = @".\Modules" };
+    - ConfigureViewModelLocator()
+        - {
+            - ViewModelLocationProvider.SetDefaultViewTypeToViewModelTypeResolver((viewType) =>
+                - {
+                    - var viewName = viewType.FullName;
+                    - var viewAssemblyName = viewType.GetTypeInfo().Assembly.FullName;
+                    - var viewModelName = $"{viewName}ViewModel, {viewAssemblyName}";
+                    - return Type.GetType(viewModelName);
+                - });
+        - }
+    - ConfigureViewModelLocator()
+        - {
+            - // type / type
+            - //ViewModelLocationProvider.Register(typeof(MainWindow).ToString(), typeof(CustomViewModel));
+            - // type / factory
+            - //ViewModelLocationProvider.Register(typeof(MainWindow).ToString(), () => Container.Resolve<CustomViewModel>());
+            - // generic factory
+            - //ViewModelLocationProvider.Register<MainWindow>(() => Container.Resolve<CustomViewModel>());
+            - // generic type
+            - ViewModelLocationProvider.Register<MainWindow, CustomViewModel>();
+        - }
+    - RegisterTypes(IContainerRegistry containerRegistry)
+    - ConfigureModuleCatalog(IModuleCatalog moduleCatalog)
+        - moduleCatalog.AddModule<ModuleA.ModuleAModule>();
+        - var moduleAType = typeof(ModuleAModule);
+        - moduleCatalog.AddModule(new ModuleInfo()
+        - {
+        -     ModuleName = moduleAType.Name,
+        -     ModuleType = moduleAType.AssemblyQualifiedName,
+        -     InitializationMode = InitializationMode.OnDemand
+        - }
+    - ConfigureRegionAdapterMappings(RegionAdapterMappings regionAdapterMappings)
+        - regionAdapterMappings.RegisterMapping(typeof(StackPanel), Container.Resolve<StackPanelRegionAdapter>());
+            - class StackPanelRegionAdapter : RegionAdapterBase<StackPanel>
+                - StackPanelRegionAdapter(IRegionBehaviorFactory regionBehaviorFactory)
+    - Window CreateShell()
+        - return Container.Resolve<MainWindow>();
+            - class MainWindowViewModel : BindableBase
+                - {
+                    - public MainWindowViewModel()
+                    - {
+                    - }
+
+                    - private string _title = "Prism Unity Application";
+                    - public string Title
+                    - {
+                        - get { return _title; }
+                        - set { SetProperty(ref _title, value); }
+                    - }
+                - }
+            - class MainWindow : Window
+                - MainWindow(IContainerExtension, IRegionManager, IModuleManager) 
+                    - InitializeComponent();
+                    - regionManager.RegisterViewWithRegion("ContentRegion", typeof(ViewA));
+                    - var view = _container.Resolve<ViewA>();
+                    - IRegion region = _regionManager.Regions["ContentRegion"];
+                    - region.Add(view);
+                    _region.Add(_viewB);
+                    _region.Activate(_viewA);
+                    _region.Deactivate(_viewA);
+                    - _moduleManager.LoadModule("ModuleAModule");
+    - class StackPanelRegionAdapter : RegionAdapterBase<StackPanel>
+        - IRegion CreateRegion()
+            - return new AllActiveRegion();
+    - class StackPanelRegionAdapter : RegionAdapterBase<StackPanel>
+        - Adapt(IRegion region, StackPanel regionTarget)
+- class ModuleAModule : IModule
+    - RegisterTypes(IContainerRegistry containerRegistry)
+    - OnInitialized(IContainerProvider containerProvider)
+        - var regionManager = containerProvider.Resolve<IRegionManager>();
+        - regionManager.RegisterViewWithRegion("ContentRegion", typeof(ViewA));
+
